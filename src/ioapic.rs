@@ -11,36 +11,33 @@ pub struct IoApic {
 
 impl IoApic {
     pub unsafe fn new(addr: usize) -> Self {
-        let mut ioapic = IoApic {
+        IoApic {
             reg: addr as *mut u32,
-            data: (addr + 16) as *mut u32,
-        };
+            data: (addr + 0x10) as *mut u32,
+        }
+    }
+    pub fn disable_all(&mut self) {
         // Mark all interrupts edge-triggered, active high, disabled,
         // and not routed to any CPUs.
-        for i in 0..=ioapic.maxintr() {
-            ioapic.write_irq(i, RedirectionEntry::DISABLED, 0);
+        for i in 0..=self.maxintr() {
+            self.write_irq(i, RedirectionEntry::DISABLED, 0);
         }
-        ioapic
     }
-    unsafe fn read(&mut self, reg: u8) -> u32
-    {
+    unsafe fn read(&mut self, reg: u8) -> u32 {
         self.reg.write_volatile(reg as u32);
         self.data.read_volatile()
     }
-    unsafe fn write(&mut self, reg: u8, data: u32)
-    {
+    unsafe fn write(&mut self, reg: u8, data: u32) {
         self.reg.write_volatile(reg as u32);
         self.data.write_volatile(data);
     }
-    fn write_irq(&mut self, irq: u8, flags: RedirectionEntry, dest: u8)
-    {
+    fn write_irq(&mut self, irq: u8, flags: RedirectionEntry, dest: u8) {
         unsafe {
             self.write(REG_TABLE + 2 * irq, (T_IRQ0 + irq) as u32 | flags.bits());
             self.write(REG_TABLE + 2 * irq + 1, (dest as u32) << 24);
         }
     }
-    pub fn enable(&mut self, irq: u8, cpunum: u8)
-    {
+    pub fn enable(&mut self, irq: u8, cpunum: u8) {
         // Mark interrupt edge-triggered, active high,
         // enabled, and routed to the given cpunum,
         // which happens to be that cpu's APIC ID.
@@ -65,7 +62,7 @@ const REG_ID: u8 = 0x00;
 const REG_VER: u8 = 0x01;
 /// Redirection table base
 const REG_TABLE: u8 = 0x10;
-const T_IRQ0 : u8 = 32;
+const T_IRQ0: u8 = 32;
 
 bitflags! {
     /// The redirection table starts at REG_TABLE and uses
@@ -74,10 +71,15 @@ bitflags! {
     /// The second (high) register contains a bitmask telling which
     /// CPUs can serve that interrupt.
 	struct RedirectionEntry: u32 {
-		const DISABLED  = 0x00010000;  // Interrupt disabled
-		const LEVEL     = 0x00008000;  // Level-triggered (vs edge-)
-		const ACTIVELOW = 0x00002000;  // Active low (vs high)
-		const LOGICAL   = 0x00000800;  // Destination is CPU id (vs APIC ID)
+	    /// Interrupt disabled
+		const DISABLED  = 0x00010000;
+		/// Level-triggered (vs edge-)
+		const LEVEL     = 0x00008000;
+		/// Active low (vs high)
+		const ACTIVELOW = 0x00002000;
+		/// Destination is CPU id (vs APIC ID)
+		const LOGICAL   = 0x00000800;
+		/// None
 		const NONE		= 0x00000000;
 	}
 }

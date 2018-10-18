@@ -33,12 +33,8 @@ impl LocalApic for X2Apic {
         unsafe { wrmsr(IA32_X2APIC_ICR, value); }
     }
 
-    unsafe fn eoi(&mut self) {
-        wrmsr(IA32_X2APIC_EOI, 0);
-    }
-
-    fn send_ipi(&mut self, apic_id: u8) {
-        self.set_icr(0x4040 | (apic_id as u64) << 32);
+    fn eoi(&mut self) {
+        unsafe { wrmsr(IA32_X2APIC_EOI, 0); }
     }
 
     unsafe fn start_ap(&mut self, apic_id: u8, addr: u32) {

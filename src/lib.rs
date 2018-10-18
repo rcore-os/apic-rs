@@ -16,9 +16,9 @@ extern crate bit_field;
 extern crate bitflags;
 
 use core::fmt::Debug;
-pub use xapic::XApic;
+pub use xapic::{XApic, LAPIC_ADDR};
 pub use x2apic::X2Apic;
-pub use ioapic::*;
+pub use ioapic::{IoApic, IOAPIC_ADDR};
 
 mod ioapic;
 mod xapic;
@@ -38,15 +38,18 @@ pub trait LocalApic {
 
     fn version(&self) -> u32;
 
+    /// Interrupt Command Register
     fn icr(&self) -> u64;
 
     fn set_icr(&mut self, value: u64);
 
     /// Acknowledge interrupt on the current CPU
-    unsafe fn eoi(&mut self);
+    fn eoi(&mut self);
 
     /// Send an IPI to a remote CPU
-    fn send_ipi(&mut self, apic_id: Tid);
+    fn send_ipi(&mut self, apic_id: u8, int_id: u8) {
+        self.set_icr((apic_id as u64) << 56 | int_id as u64);
+    }
 
     /// Start an AP
     unsafe fn start_ap(&mut self, apic_id: Tid, addr: u32);
