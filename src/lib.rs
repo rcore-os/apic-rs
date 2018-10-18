@@ -11,11 +11,16 @@
 #![no_std]
 
 extern crate x86;
+extern crate bit_field;
+#[macro_use]
+extern crate bitflags;
 
 use core::fmt::Debug;
 pub use xapic::XApic;
 pub use x2apic::X2Apic;
+pub use ioapic::*;
 
+mod ioapic;
 mod xapic;
 mod x2apic;
 
