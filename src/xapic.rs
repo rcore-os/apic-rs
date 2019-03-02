@@ -145,8 +145,10 @@ impl Debug for XApic {
     }
 }
 
-fn microdelay(_ms: usize) {
-    // TODO: micro delay
+fn microdelay(ms: usize) {
+    for _ in 0..ms {
+        core::sync::atomic::spin_loop_hint();
+    }
 }
 
 pub const LAPIC_ADDR: usize = 0xfee00000;
