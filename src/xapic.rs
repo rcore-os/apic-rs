@@ -113,7 +113,7 @@ impl LocalApic for XApic {
 
         let wrv = (0x40 << 4 | 0x67) as *mut u16;  // Warm reset vector
         *wrv = 0;
-        *wrv.offset(1) = addr as u16 >> 4;
+        *wrv.add(1) = addr as u16 >> 4;
 
         // "Universal startup algorithm."
         // Send INIT (level-triggered) interrupt to reset other CPU.
@@ -145,10 +145,12 @@ impl Debug for XApic {
     }
 }
 
-fn microdelay(ms: usize) {
-    for _ in 0..ms {
-        core::sync::atomic::spin_loop_hint();
-    }
+fn microdelay(us: u64) {
+    use x86::time::rdtsc;
+    let start  = unsafe{ rdtsc() };
+    let freq = 3_000_000_000u64; // 3GHz
+    let end = start + freq / 1_000_000 * us;
+    while unsafe { rdtsc() } < end {}
 }
 
 pub const LAPIC_ADDR: usize = 0xfee00000;
