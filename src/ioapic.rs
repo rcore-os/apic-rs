@@ -43,6 +43,9 @@ impl IoApic {
         // which happens to be that cpu's APIC ID.
         self.write_irq(irq, RedirectionEntry::NONE, cpunum);
     }
+    pub fn disable(&mut self, irq: u8) {
+        self.write_irq(irq, RedirectionEntry::DISABLED, 0);
+    }
     pub fn id(&mut self) -> u8 {
         unsafe { self.read(REG_ID).get_bits(24..28) as u8 }
     }
