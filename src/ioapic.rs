@@ -1,7 +1,6 @@
 /// The I/O APIC manages hardware interrupts for an SMP system.
 ///
 /// [Intel Doc](http://www.intel.com/design/chipsets/datashts/29056601.pdf)
-
 use bit_field::BitField;
 
 pub struct IoApic {
@@ -46,6 +45,35 @@ impl IoApic {
     pub fn disable(&mut self, irq: u8) {
         self.write_irq(irq, RedirectionEntry::DISABLED, 0);
     }
+    pub fn config(
+        &mut self,
+        irq_offset: u8,
+        dest: u8,
+        level_triggered: bool,
+        active_high: bool,
+        dest_logic: bool,
+        mask: bool,
+    ) {
+        let mut flags = RedirectionEntry::NONE;
+        if level_triggered {
+            flags = flags | RedirectionEntry::LEVEL;
+        }
+        if !active_high {
+            flags = flags | RedirectionEntry::ACTIVELOW;
+        }
+        if dest_logic {
+            flags = flags | RedirectionEntry::LOGICAL;
+        }
+        let mask = if dest < 0x20 || dest > 0xef {
+            true
+        } else {
+            mask
+        };
+        if mask {
+            flags = flags | RedirectionEntry::DISABLED;
+        }
+        self.write_irq(irq_offset, flags, dest)
+    }
     pub fn id(&mut self) -> u8 {
         unsafe { self.read(REG_ID).get_bits(24..28) as u8 }
     }
@@ -73,16 +101,16 @@ bitflags! {
     /// The first (low) register in a pair contains configuration bits.
     /// The second (high) register contains a bitmask telling which
     /// CPUs can serve that interrupt.
-	struct RedirectionEntry: u32 {
-	    /// Interrupt disabled
-		const DISABLED  = 0x00010000;
-		/// Level-triggered (vs edge-)
-		const LEVEL     = 0x00008000;
-		/// Active low (vs high)
-		const ACTIVELOW = 0x00002000;
-		/// Destination is CPU id (vs APIC ID)
-		const LOGICAL   = 0x00000800;
-		/// None
-		const NONE		= 0x00000000;
-	}
+    struct RedirectionEntry: u32 {
+        /// Interrupt disabled
+        const DISABLED  = 0x00010000;
+        /// Level-triggered (vs edge-)
+        const LEVEL     = 0x00008000;
+        /// Active low (vs high)
+        const ACTIVELOW = 0x00002000;
+        /// Destination is CPU id (vs APIC ID)
+        const LOGICAL   = 0x00000800;
+        /// None
+        const NONE		= 0x00000000;
+    }
 }
