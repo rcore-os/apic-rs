@@ -32,7 +32,7 @@ impl IoApic {
     }
     fn write_irq(&mut self, irq: u8, flags: RedirectionEntry, dest: u8) {
         unsafe {
-            self.write(REG_TABLE + 2 * irq, (T_IRQ0 + irq) as u32 | flags.bits());
+            self.write(REG_TABLE + 2 * irq, (irq) as u32 | flags.bits());
             self.write(REG_TABLE + 2 * irq + 1, (dest as u32) << 24);
         }
     }
