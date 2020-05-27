@@ -1,6 +1,7 @@
 /// The I/O APIC manages hardware interrupts for an SMP system.
 ///
 /// [Intel Doc](http://www.intel.com/design/chipsets/datashts/29056601.pdf)
+/// [OSDev](https://wiki.osdev.org/APIC#IO_APIC_Configuration)
 use bit_field::BitField;
 
 pub struct IoApic {
@@ -19,20 +20,23 @@ impl IoApic {
         // Mark all interrupts edge-triggered, active high, disabled,
         // and not routed to any CPUs.
         for i in 0..=self.maxintr() {
-            self.write_irq(i, RedirectionEntry::DISABLED, 0);
+            self.disable(i);
         }
     }
     unsafe fn read(&mut self, reg: u8) -> u32 {
+        assert!(!(reg >= 0x3 && reg < REG_TABLE));
         self.reg.write_volatile(reg as u32);
         self.data.read_volatile()
     }
     unsafe fn write(&mut self, reg: u8, data: u32) {
+        // 0x1 & 0x2 are read-only regs
+        assert!(!(reg >= 0x1 && reg < REG_TABLE));
         self.reg.write_volatile(reg as u32);
         self.data.write_volatile(data);
     }
-    fn write_irq(&mut self, irq: u8, flags: RedirectionEntry, dest: u8) {
+    fn write_irq(&mut self, irq: u8, vector: u8, flags: RedirectionEntry, dest: u8) {
         unsafe {
-            self.write(REG_TABLE + 2 * irq, (irq) as u32 | flags.bits());
+            self.write(REG_TABLE + 2 * irq, vector as u32 | flags.bits());
             self.write(REG_TABLE + 2 * irq + 1, (dest as u32) << 24);
         }
     }
@@ -40,14 +44,17 @@ impl IoApic {
         // Mark interrupt edge-triggered, active high,
         // enabled, and routed to the given cpunum,
         // which happens to be that cpu's APIC ID.
-        self.write_irq(irq, RedirectionEntry::NONE, cpunum);
+        let vector = self.irq_vector(irq);
+        self.write_irq(irq, vector, RedirectionEntry::NONE, cpunum);
     }
     pub fn disable(&mut self, irq: u8) {
-        self.write_irq(irq, RedirectionEntry::DISABLED, 0);
+        let vector = self.irq_vector(irq);
+        self.write_irq(irq, vector, RedirectionEntry::DISABLED, 0);
     }
     pub fn config(
         &mut self,
         irq_offset: u8,
+        vector: u8,
         dest: u8,
         level_triggered: bool,
         active_high: bool,
@@ -64,7 +71,7 @@ impl IoApic {
         if dest_logic {
             flags = flags | RedirectionEntry::LOGICAL;
         }
-        let mask = if dest < 0x20 || dest > 0xef {
+        let mask = if vector < 0x20 || vector > 0xef {
             true
         } else {
             mask
@@ -72,7 +79,20 @@ impl IoApic {
         if mask {
             flags = flags | RedirectionEntry::DISABLED;
         }
-        self.write_irq(irq_offset, flags, dest)
+        self.write_irq(irq_offset, vector, flags, dest)
+    }
+    pub fn irq_vector(&mut self, irq: u8) -> u8 {
+        unsafe { self.read(REG_TABLE + 2 * irq).get_bits(0..8) as u8 }
+    }
+    pub fn set_irq_vector(&mut self, irq: u8, vector: u8) {
+        let mut old = unsafe { self.read(REG_TABLE + 2 * irq) };
+        let old_vector = old.get_bits(0..8);
+        if old_vector < 0x20 || old_vector > 0xfe {
+            old |= RedirectionEntry::DISABLED.bits();
+        }
+        unsafe {
+            self.write(REG_TABLE + 2 * irq, *old.set_bits(0..8, vector as u32));
+        }
     }
     pub fn id(&mut self) -> u8 {
         unsafe { self.read(REG_ID).get_bits(24..28) as u8 }
