@@ -1,12 +1,14 @@
+#![allow(dead_code)]
+
 use super::LocalApic;
-use x86::io::outb;
-use x86::cpuid::CpuId;
-use core::ptr::{read_volatile, write_volatile};
-use core::fmt::{Debug, Formatter, Error};
 use bit_field::BitField;
+use core::fmt::{Debug, Error, Formatter};
+use core::ptr::{read_volatile, write_volatile};
+use x86::cpuid::CpuId;
+use x86::io::outb;
 
 pub struct XApic {
-    addr: usize
+    addr: usize,
 }
 
 impl XApic {
@@ -72,7 +74,6 @@ impl LocalApic for XApic {
             // Enable interrupts on the APIC (but not on the processor).
             self.write(TPR, 0);
         }
-
     }
 
     fn id(&self) -> u32 {
@@ -97,21 +98,27 @@ impl LocalApic for XApic {
     }
 
     fn eoi(&mut self) {
-        unsafe { self.write(EOI, 0); }
+        unsafe {
+            self.write(EOI, 0);
+        }
     }
 
     /// The entry point `addr` must be 4K aligned.
     /// This function will access memory: 0x467
     unsafe fn start_ap(&mut self, apic_id: u8, addr: u32) {
-        assert_eq!(addr & 0xfff, 0, "The entry point address must be 4K aligned");
+        assert_eq!(
+            addr & 0xfff,
+            0,
+            "The entry point address must be 4K aligned"
+        );
 
         // "The BSP must initialize CMOS shutdown code to 0AH
         // and the warm reset vector (DWORD based at 40:67) to point at
         // the AP startup code prior to the [universal startup algorithm]."
-        outb(CMOS_PORT, 0xf);   // offset 0xF is shutdown code
+        outb(CMOS_PORT, 0xf); // offset 0xF is shutdown code
         outb(CMOS_RETURN, 0xa);
 
-        let wrv = (0x40 << 4 | 0x67) as *mut u16;  // Warm reset vector
+        let wrv = (0x40 << 4 | 0x67) as *mut u16; // Warm reset vector
         *wrv = 0;
         *wrv.add(1) = addr as u16 >> 4;
 
@@ -147,50 +154,52 @@ impl Debug for XApic {
 
 fn microdelay(us: u64) {
     use x86::time::rdtsc;
-    let start  = unsafe{ rdtsc() };
+    let start = unsafe { rdtsc() };
     let freq = 3_000_000_000u64; // 3GHz
     let end = start + freq / 1_000_000 * us;
-    while unsafe { rdtsc() } < end {}
+    while unsafe { rdtsc() } < end {
+        core::sync::atomic::spin_loop_hint();
+    }
 }
 
 pub const LAPIC_ADDR: usize = 0xfee00000;
 
 const CMOS_PORT: u16 = 0x70;
 const CMOS_RETURN: u16 = 0x71;
-const ID      : u32 = 0x0020;       // ID
-const VER     : u32 = 0x0030;       // Version
-const TPR     : u32 = 0x0080;       // Task Priority
-const EOI     : u32 = 0x00B0;       // EOI
-const SVR     : u32 = 0x00F0;       // Spurious Interrupt Vector
-const ENABLE  : u32 =   0x00000100;     // Unit Enable
-const ESR     : u32 = 0x0280;       // Error Status
-const ICRLO   : u32 = 0x0300;       // Interrupt Command
-const INIT    : u32 =   0x00000500;     // INIT/RESET
-const STARTUP : u32 =   0x00000600;     // Startup IPI
-const DELIVS  : u32 =   0x00001000;     // Delivery status
-const ASSERT  : u32 =   0x00004000;     // Assert interrupt (vs deassert)
-const DEASSERT: u32 =   0x00000000;
-const LEVEL   : u32 =   0x00008000;     // Level triggered
-const BCAST   : u32 =   0x00080000;     // Send to all APICs, including self.
-const BUSY    : u32 =   0x00001000;
-const FIXED   : u32 =   0x00000000;
-const ICRHI   : u32 = 0x0310;       // Interrupt Command [63:32]
-const TIMER   : u32 = 0x0320;       // Local Vector Table 0 (TIMER)
-const X1      : u32 =   0x0000000B;     // divide counts by 1
-const PERIODIC: u32 =   0x00020000;     // Periodic
-const PCINT   : u32 = 0x0340;       // Performance Counter LVT
-const LINT0   : u32 = 0x0350;       // Local Vector Table 1 (LINT0)
-const LINT1   : u32 = 0x0360;       // Local Vector Table 2 (LINT1)
-const ERROR   : u32 = 0x0370;       // Local Vector Table 3 (ERROR)
-const MASKED  : u32 =   0x00010000;     // Interrupt masked
-const TICR    : u32 = 0x0380;       // Timer Initial Count
-const TCCR    : u32 = 0x0390;       // Timer Current Count
-const TDCR    : u32 = 0x03E0;       // Timer Divide Configuration
+const ID: u32 = 0x0020; // ID
+const VER: u32 = 0x0030; // Version
+const TPR: u32 = 0x0080; // Task Priority
+const EOI: u32 = 0x00B0; // EOI
+const SVR: u32 = 0x00F0; // Spurious Interrupt Vector
+const ENABLE: u32 = 0x00000100; // Unit Enable
+const ESR: u32 = 0x0280; // Error Status
+const ICRLO: u32 = 0x0300; // Interrupt Command
+const INIT: u32 = 0x00000500; // INIT/RESET
+const STARTUP: u32 = 0x00000600; // Startup IPI
+const DELIVS: u32 = 0x00001000; // Delivery status
+const ASSERT: u32 = 0x00004000; // Assert interrupt (vs deassert)
+const DEASSERT: u32 = 0x00000000;
+const LEVEL: u32 = 0x00008000; // Level triggered
+const BCAST: u32 = 0x00080000; // Send to all APICs, including self.
+const BUSY: u32 = 0x00001000;
+const FIXED: u32 = 0x00000000;
+const ICRHI: u32 = 0x0310; // Interrupt Command [63:32]
+const TIMER: u32 = 0x0320; // Local Vector Table 0 (TIMER)
+const X1: u32 = 0x0000000B; // divide counts by 1
+const PERIODIC: u32 = 0x00020000; // Periodic
+const PCINT: u32 = 0x0340; // Performance Counter LVT
+const LINT0: u32 = 0x0350; // Local Vector Table 1 (LINT0)
+const LINT1: u32 = 0x0360; // Local Vector Table 2 (LINT1)
+const ERROR: u32 = 0x0370; // Local Vector Table 3 (ERROR)
+const MASKED: u32 = 0x00010000; // Interrupt masked
+const TICR: u32 = 0x0380; // Timer Initial Count
+const TCCR: u32 = 0x0390; // Timer Current Count
+const TDCR: u32 = 0x03E0; // Timer Divide Configuration
 
-const T_IRQ0      : u32 = 32;       // IRQ 0 corresponds to int T_IRQ
-const IRQ_TIMER   : u32 =  0;
-const IRQ_KBD     : u32 =  1;
-const IRQ_COM1    : u32 =  4;
-const IRQ_IDE     : u32 = 14;
-const IRQ_ERROR   : u32 = 19;
+const T_IRQ0: u32 = 32; // IRQ 0 corresponds to int T_IRQ
+const IRQ_TIMER: u32 = 0;
+const IRQ_KBD: u32 = 1;
+const IRQ_COM1: u32 = 4;
+const IRQ_IDE: u32 = 14;
+const IRQ_ERROR: u32 = 19;
 const IRQ_SPURIOUS: u32 = 31;

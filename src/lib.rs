@@ -10,19 +10,13 @@
 
 #![no_std]
 
-extern crate x86;
-extern crate bit_field;
-#[macro_use]
-extern crate bitflags;
-
-use core::fmt::Debug;
-pub use xapic::{XApic, LAPIC_ADDR};
-pub use x2apic::X2Apic;
 pub use ioapic::{IoApic, IOAPIC_ADDR};
+pub use x2apic::X2Apic;
+pub use xapic::{XApic, LAPIC_ADDR};
 
 mod ioapic;
-mod xapic;
 mod x2apic;
+mod xapic;
 
 type Tid = u8;
 

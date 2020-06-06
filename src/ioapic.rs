@@ -3,6 +3,7 @@
 /// [Intel Doc](http://www.intel.com/design/chipsets/datashts/29056601.pdf)
 /// [OSDev](https://wiki.osdev.org/APIC#IO_APIC_Configuration)
 use bit_field::BitField;
+use bitflags::bitflags;
 
 pub struct IoApic {
     reg: *mut u32,
@@ -113,7 +114,6 @@ const REG_ID: u8 = 0x00;
 const REG_VER: u8 = 0x01;
 /// Redirection table base
 const REG_TABLE: u8 = 0x10;
-const T_IRQ0: u8 = 32;
 
 bitflags! {
     /// The redirection table starts at REG_TABLE and uses
