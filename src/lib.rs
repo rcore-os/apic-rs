@@ -9,6 +9,7 @@
 //! Reference: [OSDev Wiki](https://wiki.osdev.org/APIC)
 
 #![no_std]
+#![deny(warnings)]
 
 pub use ioapic::{IoApic, IOAPIC_ADDR};
 pub use x2apic::X2Apic;
@@ -45,6 +46,10 @@ pub trait LocalApic {
         self.set_icr((apic_id as u64) << 56 | int_id as u64);
     }
 
-    /// Start an AP
+    /// Start an application processor.
+    ///
+    /// # Safety
+    ///
+    /// You must provide a valid start address.
     unsafe fn start_ap(&mut self, apic_id: Tid, addr: u32);
 }

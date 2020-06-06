@@ -23,6 +23,11 @@ impl XApic {
 }
 
 impl XApic {
+    /// Create a new XAPIC.
+    ///
+    /// # Safety
+    ///
+    /// You must provide a valid address.
     pub unsafe fn new(addr: usize) -> Self {
         XApic { addr }
     }
