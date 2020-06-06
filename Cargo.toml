@@ -7,6 +7,6 @@ license = "MIT/Apache-2.0"
 description = "APIC (Advanced Programmable Interrupt Controller) for x86 kernel."
 
 [dependencies]
-x86 = "0.15"
-bit_field = "0.9"
-bitflags = "1.0"
+x86 = "0.33"
+bit_field = "0.10"
+bitflags = "1.2"
