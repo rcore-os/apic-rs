@@ -163,7 +163,7 @@ fn microdelay(us: u64) {
     let freq = 3_000_000_000u64; // 3GHz
     let end = start + freq / 1_000_000 * us;
     while unsafe { rdtsc() } < end {
-        core::sync::atomic::spin_loop_hint();
+        core::hint::spin_loop();
     }
 }
 
