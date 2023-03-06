@@ -32,14 +32,14 @@ impl IoApic {
     }
 
     unsafe fn read(&mut self, reg: u8) -> u32 {
-        assert!(!(reg >= 0x3 && reg < REG_TABLE));
+        assert!(!(0x3..REG_TABLE).contains(&reg));
         self.reg.write_volatile(reg as u32);
         self.data.read_volatile()
     }
 
     unsafe fn write(&mut self, reg: u8, data: u32) {
         // 0x1 & 0x2 are read-only regs
-        assert!(!(reg >= 0x1 && reg < REG_TABLE));
+        assert!(!(0x1..REG_TABLE).contains(&reg));
         self.reg.write_volatile(reg as u32);
         self.data.write_volatile(data);
     }
@@ -85,7 +85,7 @@ impl IoApic {
         if dest_logic {
             flags |= RedirectionEntry::LOGICAL;
         }
-        if vector < 0x20 || vector > 0xef {
+        if !(0x20..=0xef).contains(&vector) {
             mask = true;
         }
         if mask {
@@ -101,7 +101,7 @@ impl IoApic {
     pub fn set_irq_vector(&mut self, irq: u8, vector: u8) {
         let mut old = unsafe { self.read(REG_TABLE + 2 * irq) };
         let old_vector = old.get_bits(0..8);
-        if old_vector < 0x20 || old_vector > 0xfe {
+        if !(0x20..=0xfe).contains(&old_vector) {
             old |= RedirectionEntry::DISABLED.bits();
         }
         unsafe {
